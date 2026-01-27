@@ -4,7 +4,9 @@ import jwt from "jsonwebtoken";
 import connectDB from "./db.js";
 import dotenv from "dotenv";
 import User from "./models/User.js";
+import Task from "./models/Task.js";
 import bcrypt from "bcrypt";
+import { canTransition } from "./workflow.js";
 dotenv.config();
 await connectDB();
 const typeDefs = `
@@ -18,14 +20,39 @@ const typeDefs = `
         token:String,
         user:User!
      }
+        enum TaskStatus {
+          BACKLOG
+          TODO
+          IN_PROGRESS
+          BLOCKED
+          DONE
+          ARCHIVED
+        }
+          enum TaskPriority {
+            LOW
+            MEDIUM
+            HIGH
+          }
+        type Task {
+          id:ID!
+          title:String!
+          description:String!
+          status:TaskStatus!
+          priority:TaskPriority!
+          createdAt:String!
+        }
+
      type Query {
        users: [User!]!
        me: User
+       myTasks: [Task!]!
      }
     
        type Mutation {
          signup(name:String!, email:String!, password:String!): AuthPayload!
          login(email:String!, password:String!): AuthPayload!
+         createTask(title:String!, description:String!,priority:TaskPriority!) : Task!
+         transitionTask(taskId:ID!, nextStatus:TaskStatus!):Task!
        }
 `;
 
@@ -45,6 +72,13 @@ const resolvers = {
         name: user.name,
         email: user.email,
       };
+    },
+    myTasks: async (_, __, { userId }) => {
+      if (!userId) {
+        throw new Error("Unauthorized");
+      }
+      const task = await Task.find({ ownerId: userId }).sort({ createdAt: -1 });
+      return task;
     },
   },
   Mutation: {
@@ -89,6 +123,37 @@ const resolvers = {
           email: user.email,
         },
       };
+    },
+    createTask: async (_, args, { userId }) => {
+      if (!userId) {
+        throw new Error("Unauthorized");
+      }
+      const task = await Task.create({
+        ...args,
+        status: "BACKLOG",
+        ownerId: userId,
+      });
+      return task;
+    },
+    transitionTask: async (_, { taskId, nextStatus }, { userId }) => {
+      if (!userId) {
+        throw new Error("Unauthorized");
+      }
+      const task = await Task.findById(taskId);
+      if (!task) {
+        throw new Error("Task not found");
+      }
+      if (task.ownerId.toString() !== userId) {
+        throw new Error("Forbidden");
+      }
+      if (!canTransition(task.status, nextStatus)) {
+        throw new Error(
+          `Invalid transition from ${task.status} to ${nextStatus}`,
+        );
+      }
+      task.status = nextStatus;
+      await task.save();
+      return task;
     },
   },
 };

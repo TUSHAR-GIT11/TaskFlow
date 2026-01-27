@@ -4,10 +4,10 @@ import { SIGN_UP_USER } from "../graphql/mutation";
 import { useMutation } from "@apollo/client/react";
 
 export default function Signup() {
-  const [signup, { error }] = useMutation(SIGN_UP_USER,{
-    onCompleted:(data)=>{
-      localStorage.setItem("token",data.signup.token)
-    }
+  const [signup, { error }] = useMutation(SIGN_UP_USER, {
+    onCompleted: (data) => {
+      localStorage.setItem("token", data.signup.token);
+    },
   });
   const [formData, setFormData] = useState({
     name: "",
@@ -26,8 +26,7 @@ export default function Signup() {
     });
   };
 
-  
-  if(error) return <p>{error.message}</p>
+  if (error) return <p>{error.message}</p>;
 
   const handleChange = (e) => {
     setFormData({

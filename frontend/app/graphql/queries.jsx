@@ -9,3 +9,17 @@ export const ME_QUERY = gql`
     }
   }
 `;
+
+
+
+export const MY_TASKS = gql`
+  query {
+    myTasks {
+      id
+      title
+      status
+      priority
+    }
+  }
+`;
+
