@@ -1,4 +1,5 @@
 import CreateTaskForm from "../components/createTaskForm";
+import DashboardStats from "../components/dashboardStats";
 import TaskList from "../components/tasklist";
 
 export default function DashboardPage() {
@@ -17,10 +18,12 @@ export default function DashboardPage() {
         </header>
 
         {/* Create Task */}
+        <DashboardStats/>
         <CreateTaskForm />
 
         {/* Task List */}
         <TaskList />
+        
 
       </div>
     </main>

@@ -7,6 +7,7 @@ export default function Signup() {
   const [signup, { error }] = useMutation(SIGN_UP_USER, {
     onCompleted: (data) => {
       localStorage.setItem("token", data.signup.token);
+      localStorage.setItem("role",data.signup.user.role)
     },
   });
   const [formData, setFormData] = useState({
@@ -34,6 +35,8 @@ export default function Signup() {
       [e.target.name]: e.target.value,
     });
   };
+
+  
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 px-4">

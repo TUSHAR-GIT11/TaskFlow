@@ -3,10 +3,12 @@ import "./globals.css";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import ApolloWrapper from "./lib/apollo-provider"
+import { Toaster } from "react-hot-toast"
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body className="bg-gray-50 text-gray-900">
+        <Toaster position="top-right" reverseOrder={false}/>
         {/* Navbar */}
         <nav className="w-full bg-white border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">

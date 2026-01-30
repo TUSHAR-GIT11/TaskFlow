@@ -7,6 +7,7 @@ export const SIGN_UP_USER = gql`
         id
         name
         email
+        role
       }
     }
   }
@@ -20,6 +21,7 @@ export const LOGIN_USER = gql`
         id
         name
         email
+        role
       }
     }
   }
@@ -41,10 +43,12 @@ export const CREATE_TASK = gql`
 `;
 
 export const TRANSITION_TASK = gql`
-  mutation TransitionTask($taskId: ID!, $nextStatus: TaskStatus!) {
-    transitionTask(taskId: $taskId, nextStatus: $nextStatus) {
+  mutation TransitionTask($taskId: ID!, $nextStatus: TaskStatus!, $reason:String) {
+    transitionTask(taskId: $taskId, nextStatus: $nextStatus, reason:$reason) {
       id
       status
     }
   }
 `;
+
+

@@ -5,9 +5,10 @@ import { LOGIN_USER } from "../graphql/mutation";
 import { useRouter } from "next/navigation";
 export default function Login() {
   const router = useRouter()
-  const [login,{data,error}] = useMutation(LOGIN_USER,{
+  const [login,{error}] = useMutation(LOGIN_USER,{
     onCompleted:(data)=>{
       localStorage.setItem("token",data.login.token)
+      localStorage.setItem("role",data.login.user.role)
       router.push("/dashboard")
     }
   })
@@ -26,10 +27,7 @@ export default function Login() {
      })
   };
 
-  if(data){
-    localStorage.getItem("token",data.login.token)
-    
-  }
+  
   if(error) return <p>{error.message}</p>
 
   const handleChange = (e) => {

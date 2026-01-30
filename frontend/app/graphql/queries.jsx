@@ -10,8 +10,6 @@ export const ME_QUERY = gql`
   }
 `;
 
-
-
 export const MY_TASKS = gql`
   query {
     myTasks {
@@ -23,3 +21,27 @@ export const MY_TASKS = gql`
   }
 `;
 
+export const TASK_ACTIVITY = gql`
+  query TaskActivity($taskId: ID!) {
+    taskActivity(taskId: $taskId) {
+      id
+      fromStatus
+      toStatus
+      action
+      createdAt
+    }
+  }
+`;
+
+export const TASK_STATS = gql`
+  query TaskStats {
+    taskStats {
+      total
+      done
+      backlog
+      blocked
+      inProgress
+      todo
+    }
+  }
+`;
