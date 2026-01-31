@@ -43,12 +43,37 @@ export const CREATE_TASK = gql`
 `;
 
 export const TRANSITION_TASK = gql`
-  mutation TransitionTask($taskId: ID!, $nextStatus: TaskStatus!, $reason:String) {
-    transitionTask(taskId: $taskId, nextStatus: $nextStatus, reason:$reason) {
+  mutation TransitionTask(
+    $taskId: ID!
+    $nextStatus: TaskStatus!
+    $reason: String
+  ) {
+    transitionTask(taskId: $taskId, nextStatus: $nextStatus, reason: $reason) {
       id
       status
     }
   }
 `;
 
+export const UPDATE_ROLE = gql`
+  mutation UpdateUserRole($userId: ID!, $role: UserRole!) {
+    updateUserRole(userId: $userId, role: $role) {
+      id
+      email
+      name
+      role
+    }
+  }
+`;
 
+export const TOGGLE_USER = gql`
+  mutation ToggleUserStatus($userId: ID!) {
+    toggleUserStatus(userId: $userId) {
+      id
+      name
+      email
+      role
+      isActive
+    }
+  }
+`;

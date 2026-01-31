@@ -6,6 +6,20 @@ export const ME_QUERY = gql`
       id
       name
       email
+      role
+      isActive
+    }
+  }
+`;
+
+export const GET_USERS = gql`
+  query Users {
+    users {
+      id
+      name
+      email
+      role
+      isActive
     }
   }
 `;

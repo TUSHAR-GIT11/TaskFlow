@@ -8,7 +8,7 @@ import Task from "./models/Task.js";
 import bcrypt from "bcrypt";
 import { canTransition } from "./workflow.js";
 import ActivityLog from "./models/ActivityLog.js";
-import { can,PERMISSIONS } from "../backend/utils/permissions.js"
+import { can, PERMISSIONS } from "../backend/utils/permissions.js";
 dotenv.config();
 await connectDB();
 const typeDefs = `
@@ -95,11 +95,11 @@ const createToken = (user) => {
 
 const resolvers = {
   Query: {
-    users:async(_,__,{role})=>{
-       if(!can(role,PERMISSIONS.MANAGE_USERS)){
-         throw new Error("Forbidden")
-       }
-       return User.find().select("-password")
+    users: async (_, __, { role, userId }) => {
+      if (!can({ userId, role }, PERMISSIONS.MANAGE_USERS)) {
+        throw new Error("Forbidden");
+      }
+      return User.find().select("-password");
     },
     me: async (_, __, context) => {
       if (!context.userId) {
@@ -110,6 +110,8 @@ const resolvers = {
         id: user._id.toString(),
         name: user.name,
         email: user.email,
+        role: user.role,
+        isActive: user.isActive
       };
     },
     myTasks: async (_, __, { userId, role }) => {
@@ -260,6 +262,50 @@ const resolvers = {
         reason: reason || null,
       });
       return task;
+    },
+    updateUserRole: async (_, { userId: targetUserId, role: newRole }, ctx) => {
+      if (
+        !can({ userId: ctx.userId, role: ctx.role }, PERMISSIONS.MANAGE_USERS)
+      ) {
+        throw new Error("Forbidden");
+      }
+
+      const user = await User.findByIdAndUpdate(
+        targetUserId,
+        { role: newRole },
+        { new: true },
+      );
+
+      await ActivityLog.create({
+        entityType: "USER",
+        entityId: targetUserId,
+        action: "ROLE_CHANGED",
+        performedBy: ctx.userId,
+        metadata: { newRole },
+      });
+
+      return user;
+    },
+
+    toggleUserStatus: async (_, { userId: targetUserId }, ctx) => {
+      if (
+        !can({ userId: ctx.userId, role: ctx.role }, PERMISSIONS.MANAGE_USERS)
+      ) {
+        throw new Error("Forbidden");
+      }
+
+      const user = await User.findById(targetUserId);
+      user.isActive = !user.isActive;
+      await user.save();
+
+      await ActivityLog.create({
+        entityType: "USER",
+        entityId: targetUserId,
+        action: user.isActive ? "USER_ENABLED" : "USER_DISABLED",
+        performedBy: ctx.userId,
+      });
+
+      return user;
     },
   },
 };
