@@ -4,7 +4,7 @@ import { useQuery } from "@apollo/client/react";
 import { useRouter } from "next/navigation";
 import { ME_QUERY } from "../graphql/queries";
 import { useEffect } from "react";
-
+import Link from "next/link";
 export default function DashboardLayout({ children }) {
   const router = useRouter();
   const { data, loading, error } = useQuery(ME_QUERY);
@@ -18,13 +18,32 @@ export default function DashboardLayout({ children }) {
   if (loading) return <p>Loading...</p>;
 
   if (error || !data?.me) {
-    return null; // 👈 stop rendering
+    return null;
   }
 
   return (
-    <div>
-      <h1>Welcome {data.me.name}</h1>
-      {children}
+    <div className="min-h-screen bg-gray-100">
+      {/* TOP BAR */}
+      <div className="bg-white border-b shadow-sm">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          <h1 className="text-lg font-semibold text-gray-800">
+            Welcome, {data.me.name}
+          </h1>
+
+          {/* ADMIN BUTTON */}
+          {data.me.role === "ADMIN" && (
+            <Link
+              href="/admin"
+              className="px-4 py-2 text-sm font-medium rounded-md bg-black text-white hover:bg-gray-800 transition"
+            >
+              Admin Panel
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {/* DASHBOARD CONTENT */}
+      <div>{children}</div>
     </div>
   );
 }

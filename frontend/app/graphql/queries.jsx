@@ -39,13 +39,14 @@ export const TASK_ACTIVITY = gql`
   query TaskActivity($taskId: ID!) {
     taskActivity(taskId: $taskId) {
       id
-      fromStatus
-      toStatus
       action
       createdAt
+      fromValue
+      toValue
     }
   }
 `;
+
 
 export const TASK_STATS = gql`
   query TaskStats {
@@ -56,6 +57,21 @@ export const TASK_STATS = gql`
       blocked
       inProgress
       todo
+    }
+  }
+`;
+
+export const GET_ACTIVITY_LOG = gql`
+  query ActivityLogs {
+    activityLogs {
+      id
+      action
+      entityType
+      createdAt
+      performedByEmail
+      targetEmail
+      fromValue
+      toValue
     }
   }
 `;

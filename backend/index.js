@@ -9,9 +9,11 @@ import bcrypt from "bcrypt";
 import { canTransition } from "./workflow.js";
 import ActivityLog from "./models/ActivityLog.js";
 import { can, PERMISSIONS } from "../backend/utils/permissions.js";
+
 dotenv.config();
 await connectDB();
 const typeDefs = `
+    
    type User {
      id:ID!
      name:String!
@@ -56,13 +58,18 @@ const typeDefs = `
           priority:TaskPriority!
           createdAt:String!
         }   
-          type ActivityLog {
-            id:ID!
-            fromStatus:String,
-            toStatus:String,
-            action:String
-            createdAt:String
-          }
+type ActivityLog {
+  id: ID!
+  action: String!
+  entityType: String!
+  createdAt: String!
+  performedByEmail: String!
+  targetEmail: String!
+  fromValue: String
+  toValue: String
+}
+
+
 
      type Query {
        users: [User!]!
@@ -71,6 +78,7 @@ const typeDefs = `
        taskActivity(taskId:ID!): [ActivityLog!]!
        taskStats:TaskStats!
        archivedTask:[Task!]!
+       activityLogs:[ActivityLog!]!
      }
     
        type Mutation {
@@ -111,7 +119,7 @@ const resolvers = {
         name: user.name,
         email: user.email,
         role: user.role,
-        isActive: user.isActive
+        isActive: user.isActive,
       };
     },
     myTasks: async (_, __, { userId, role }) => {
@@ -128,22 +136,29 @@ const resolvers = {
       return task;
     },
     taskActivity: async (_, { taskId }, { userId, role }) => {
-      if (!userId) {
-        throw new Error("Unauthorized");
-      }
+      if (!userId) throw new Error("Unauthorized");
+
       const task = await Task.findById(taskId);
-      if (!task) {
-        throw new Error("Task not found");
-      }
-      if (role === "ADMIN") {
-        return ActivityLog.find({ taskId }).sort({ createdAt: -1 });
-      }
-      if (task.ownerId.toString() !== userId) {
+      if (!task) throw new Error("Task not found");
+
+      if (role !== "ADMIN" && task.ownerId.toString() !== userId) {
         throw new Error("Forbidden");
       }
 
-      return ActivityLog.find({ taskId }).sort({ createdAt: -1 });
+      const logs = await ActivityLog.find({
+        entityType: "TASK",
+        entityId: taskId,
+      }).sort({ createdAt: -1 });
+
+      return logs.map((log) => ({
+        id: log._id.toString(),
+        action: log.action,
+        fromValue: log.fromValue || null,
+        toValue: log.toValue || null,
+        createdAt: log.createdAt.toISOString(), // ✅ THIS FIXES INVALID DATE
+      }));
     },
+
     taskStats: async (_, __, { userId }) => {
       if (!userId) {
         throw new Error("Unauthorized");
@@ -165,6 +180,39 @@ const resolvers = {
         status: "ARCHIVED",
       }).sort({ createdAt: -1 });
       return task;
+    },
+    activityLogs: async (_, __, ctx) => {
+      if (!can(ctx, PERMISSIONS.MANAGE_USERS)) {
+        throw new Error("Forbidden");
+      }
+
+      const logs = await ActivityLog.find({
+        entityType: "USER",
+        action: { $in: ["ROLE_CHANGED", "USER_ENABLED", "USER_DISABLED"] },
+      })
+        .sort({ createdAt: -1 })
+        .limit(50);
+
+      
+      const userIds = [
+        ...new Set(logs.flatMap((l) => [l.performedBy, l.entityId])),
+      ];
+
+      const users = await User.find({ _id: { $in: userIds } });
+      const userMap = Object.fromEntries(
+        users.map((u) => [u._id.toString(), u.email]),
+      );
+
+      return logs.map((log) => ({
+        id: log._id.toString(),
+        action: log.action,
+        entityType: log.entityType,
+        createdAt: log.createdAt.toISOString(),
+        performedByEmail: userMap[log.performedBy.toString()] || "Unknown",
+        targetEmail: userMap[log.entityId.toString()] || "Unknown",
+        fromValue: log.fromValue || null,
+        toValue: log.toValue || null,
+      }));
     },
   },
   Mutation: {
@@ -254,13 +302,14 @@ const resolvers = {
       await task.save();
 
       await ActivityLog.create({
-        taskId: task._id,
-        userId,
-        fromStatus: prevStatus,
-        toStatus: nextStatus,
+        entityType: "TASK",
+        entityId: task._id,
         action: "STATUS_CHANGED",
-        reason: reason || null,
+        performedBy: userId,
+        fromValue: prevStatus,
+        toValue: nextStatus,
       });
+
       return task;
     },
     updateUserRole: async (_, { userId: targetUserId, role: newRole }, ctx) => {
@@ -270,18 +319,21 @@ const resolvers = {
         throw new Error("Forbidden");
       }
 
-      const user = await User.findByIdAndUpdate(
-        targetUserId,
-        { role: newRole },
-        { new: true },
-      );
+      const user = await User.findByIdAndUpdate(targetUserId);
+      if (!user) {
+        throw new Error("User not found");
+      }
 
+      const prevRole = user.role;
+      user.role = newRole;
+      await user.save();
       await ActivityLog.create({
         entityType: "USER",
         entityId: targetUserId,
         action: "ROLE_CHANGED",
         performedBy: ctx.userId,
-        metadata: { newRole },
+        fromValue: prevRole,
+        toValue: newRole,
       });
 
       return user;

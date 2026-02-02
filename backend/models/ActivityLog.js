@@ -1,22 +1,39 @@
 import mongoose from "mongoose";
 
-const activityLogSchema = mongoose.Schema({
-    taskId:{
-       type:mongoose.Schema.Types.ObjectId,
-       ref: "Task",
-       required:true
+const { Schema } = mongoose;
 
+const activityLogSchema = new Schema(
+  {
+    entityType: {
+      type: String,
+      required: true,
     },
-    userId:{
-        type:mongoose.Schema.Types.ObjectId,
-        ref:"User",
-        required:true
+    entityId: {
+      type: Schema.Types.ObjectId,
+      required: true,
     },
-    fromStatus:String,
-    toStatus:String,
-    action:String
-},
-   { timeStamps:true }
-)
+    action: {
+      type: String,
+      required: true,
+    },
+    performedBy: {
+      type: Schema.Types.ObjectId,
+      required: true,
+    },
+    fromValue:{
+      type:String,
+      required:true
+    },
+    toValue:{
+      type:String,
+      required:true
+    }
+  },
+  {
+    timestamps: true, 
+  }
+);
 
-export default mongoose.model("ActivityLog", activityLogSchema)
+const ActivityLog = mongoose.model("ActivityLog", activityLogSchema);
+
+export default ActivityLog;
