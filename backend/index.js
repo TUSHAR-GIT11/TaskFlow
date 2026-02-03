@@ -10,6 +10,7 @@ import { canTransition } from "./workflow.js";
 import ActivityLog from "./models/ActivityLog.js";
 import { can, PERMISSIONS } from "../backend/utils/permissions.js";
 import Comment from "./models/Comment.js";
+import Notification from "./models/notification.js";
 dotenv.config();
 await connectDB();
 const typeDefs = `
@@ -27,6 +28,13 @@ const typeDefs = `
        authorEmail:String!
        createdAt:String!
      }
+       type Notification {
+         id:ID!
+         message:String!
+         type:String!
+         isRead:Boolean!
+         createdAt:String!
+       }
      type TaskStats {
         total:Int!
         backlog:Int!
@@ -86,6 +94,7 @@ type ActivityLog {
        archivedTask:[Task!]!
        activityLogs:[ActivityLog!]!
        taskComments(taskId:ID!): [Comment!]!
+       myNotifications:[Notification!]!
      }
     
        type Mutation {
@@ -96,6 +105,7 @@ type ActivityLog {
          updateUserRole(userId:ID!,role:UserRole!):User!
          toggleUserStatus(userId:ID!):User!
          addComment(taskId:ID!,content:String!):Comment!
+         markNotificationRead(notificationId:ID!):Boolean!
        }
 `;
 
@@ -236,6 +246,21 @@ const resolvers = {
         createdAt: c.createdAt.toISOString(),
       }));
     },
+    myNotifications: async (_, __, { userId }) => {
+      if (!userId) throw new Error("Unauthorized");
+
+      const notifications = await Notification.find({ userId })
+        .sort({ createdAt: -1 })
+        .limit(20);
+
+      return notifications.map((n) => ({
+        id: n._id.toString(),
+        message: n.message,
+        type: n.type,
+        isRead: n.isRead,
+        createdAt: n.createdAt.toISOString(),
+      }));
+    },
   },
   Mutation: {
     signup: async (_, args) => {
@@ -332,6 +357,14 @@ const resolvers = {
         toValue: nextStatus,
       });
 
+      if (task.ownerId.toString() !== userId) {
+        await Notification.create({
+          userId: task.ownerId,
+          type: "STATUS_CHANGED",
+          message: `Your task moved from ${prevStatus} → ${nextStatus}`,
+        });
+      }
+
       return task;
     },
     updateUserRole: async (_, { userId: targetUserId, role: newRole }, ctx) => {
@@ -378,29 +411,49 @@ const resolvers = {
         action: user.isActive ? "USER_ENABLED" : "USER_DISABLED",
         performedBy: ctx.userId,
       });
+      await Notification.create({
+        userId: targetUserId,
+        type: user.isActive ? "USER_ENABLED" : "USER_DISABLED",
+        message: user.isActive
+          ? "Your account has been enabled"
+          : "Your account has been disabled",
+      });
 
       return user;
     },
-    addComment: async (_, { taskId, content }, { userId }) => {
-      if (!userId) {
-        throw new Error("Unauthorized");
+    addComment: async (_, { taskId, content }, { userId, role }) => {
+      if (!userId) throw new Error("Unauthorized");
+      if (!content.trim()) throw new Error("Comment cannot be empty");
+
+      const task = await Task.findById(taskId);
+      if (!task) throw new Error("Task not found");
+
+      if (role !== "ADMIN" && task.ownerId.toString() !== userId) {
+        throw new Error("Forbidden");
       }
-      if (!content.trim()) {
-        throw new Error("Comment cannot be empty");
-      }
+
       const comment = await Comment.create({
         taskId,
         authorId: userId,
         content,
       });
+
+      // activity log
       await ActivityLog.create({
         entityType: "TASK",
         entityId: taskId,
         action: "COMMENT_ADDED",
         performedBy: userId,
-        fromValue: null,
-        toValue: null,
       });
+
+      // 🔔 notification to task owner (if not same user)
+      if (task.ownerId.toString() !== userId) {
+        await Notification.create({
+          userId: task.ownerId,
+          type: "COMMENT_ADDED",
+          message: "Someone commented on your task",
+        });
+      }
 
       const populated = await comment.populate("authorId", "email");
 
@@ -410,6 +463,22 @@ const resolvers = {
         authorEmail: populated.authorId.email,
         createdAt: populated.createdAt.toISOString(),
       };
+    },
+
+    markNotificationRead: async (_, { notificationId }, { userId }) => {
+      if (!userId) throw new Error("Unauthorized");
+
+      const notification = await Notification.findOne({
+        _id: notificationId,
+        userId,
+      });
+
+      if (!notification) throw new Error("Notification not found");
+
+      notification.isRead = true;
+      await notification.save();
+
+      return true;
     },
   },
 };
