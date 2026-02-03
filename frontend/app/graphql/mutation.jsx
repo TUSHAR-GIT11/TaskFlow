@@ -77,3 +77,14 @@ export const TOGGLE_USER = gql`
     }
   }
 `;
+
+export const ADD_COMMENT = gql`
+  mutation AddComment($taskId: ID!, $content: String!) {
+    addComment(taskId: $taskId, content: $content) {
+      id
+      content
+      authorEmail
+      createdAt
+    }
+  }
+`;

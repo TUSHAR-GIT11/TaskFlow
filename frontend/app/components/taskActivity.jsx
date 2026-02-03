@@ -23,15 +23,23 @@ function TaskActivity({ taskId }) {
       <ul className="space-y-1 text-sm text-gray-500">
         {data.taskActivity.map((log) => (
           <li key={log.id} className="flex items-center gap-2">
-            <span className="font-medium text-gray-800">
-              {log.fromValue ?? "—"}
-            </span>
+            {/* STATUS CHANGE */}
+            {log.action === "STATUS_CHANGED" && (
+              <>
+                <span className="font-medium text-gray-800">
+                  {log.fromValue}
+                </span>
 
-            <span className="text-gray-400">→</span>
+                <span className="text-gray-400">→</span>
 
-            <span className="font-medium text-gray-800">
-              {log.toValue ?? "—"}
-            </span>
+                <span className="font-medium text-gray-800">{log.toValue}</span>
+              </>
+            )}
+
+            {/* COMMENT */}
+            {log.action === "COMMENT_ADDED" && (
+              <span className="italic text-gray-500">💬 Comment added</span>
+            )}
 
             <span className="ml-2 text-xs text-gray-400">
               ({new Date(log.createdAt).toLocaleString()})

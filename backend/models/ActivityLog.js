@@ -22,11 +22,11 @@ const activityLogSchema = new Schema(
     },
     fromValue:{
       type:String,
-      required:true
+      required:false
     },
     toValue:{
       type:String,
-      required:true
+      required:false
     }
   },
   {

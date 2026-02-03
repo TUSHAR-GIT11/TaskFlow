@@ -9,7 +9,7 @@ import bcrypt from "bcrypt";
 import { canTransition } from "./workflow.js";
 import ActivityLog from "./models/ActivityLog.js";
 import { can, PERMISSIONS } from "../backend/utils/permissions.js";
-
+import Comment from "./models/Comment.js";
 dotenv.config();
 await connectDB();
 const typeDefs = `
@@ -21,6 +21,12 @@ const typeDefs = `
      role:UserRole!
      isActive:Boolean
    }
+     type Comment {
+       id:ID!
+       content:String!
+       authorEmail:String!
+       createdAt:String!
+     }
      type TaskStats {
         total:Int!
         backlog:Int!
@@ -79,6 +85,7 @@ type ActivityLog {
        taskStats:TaskStats!
        archivedTask:[Task!]!
        activityLogs:[ActivityLog!]!
+       taskComments(taskId:ID!): [Comment!]!
      }
     
        type Mutation {
@@ -88,6 +95,7 @@ type ActivityLog {
          transitionTask(taskId:ID!, nextStatus:TaskStatus!,reason:String):Task!
          updateUserRole(userId:ID!,role:UserRole!):User!
          toggleUserStatus(userId:ID!):User!
+         addComment(taskId:ID!,content:String!):Comment!
        }
 `;
 
@@ -193,7 +201,6 @@ const resolvers = {
         .sort({ createdAt: -1 })
         .limit(50);
 
-      
       const userIds = [
         ...new Set(logs.flatMap((l) => [l.performedBy, l.entityId])),
       ];
@@ -212,6 +219,21 @@ const resolvers = {
         targetEmail: userMap[log.entityId.toString()] || "Unknown",
         fromValue: log.fromValue || null,
         toValue: log.toValue || null,
+      }));
+    },
+    taskComments: async (_, { taskId }, { userId }) => {
+      if (!userId) {
+        throw new Error("Unauthorized");
+      }
+      const comments = await Comment.find({ taskId })
+        .sort({ createdAt: 1 })
+        .populate("authorId", "email");
+
+      return comments.map((c) => ({
+        id: c._id.toString(),
+        content: c.content,
+        authorEmail: c.authorId.email,
+        createdAt: c.createdAt.toISOString(),
       }));
     },
   },
@@ -358,6 +380,36 @@ const resolvers = {
       });
 
       return user;
+    },
+    addComment: async (_, { taskId, content }, { userId }) => {
+      if (!userId) {
+        throw new Error("Unauthorized");
+      }
+      if (!content.trim()) {
+        throw new Error("Comment cannot be empty");
+      }
+      const comment = await Comment.create({
+        taskId,
+        authorId: userId,
+        content,
+      });
+      await ActivityLog.create({
+        entityType: "TASK",
+        entityId: taskId,
+        action: "COMMENT_ADDED",
+        performedBy: userId,
+        fromValue: null,
+        toValue: null,
+      });
+
+      const populated = await comment.populate("authorId", "email");
+
+      return {
+        id: populated._id.toString(),
+        content: populated.content,
+        authorEmail: populated.authorId.email,
+        createdAt: populated.createdAt.toISOString(),
+      };
     },
   },
 };

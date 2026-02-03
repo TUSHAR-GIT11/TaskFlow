@@ -10,6 +10,10 @@ export default function AdminPage() {
     ROLE_CHANGED: { icon: "🔁", label: "Role changed" },
     USER_ENABLED: { icon: "✅", label: "User enabled" },
     USER_DISABLED: { icon: "⛔", label: "User disabled" },
+    COMMENT_ADDED: {
+      icon: "💬",
+      label: "Comment added",
+    },
   };
 
   const timeAgo = (date) => {
@@ -197,7 +201,7 @@ export default function AdminPage() {
                           <span className="font-semibold">
                             {log.targetEmail}
                           </span>
-                          {log.fromValue && log.toValue && (
+                          {log.action === "STATUS_CHANGED" && (
                             <>
                               {" "}
                               from{" "}

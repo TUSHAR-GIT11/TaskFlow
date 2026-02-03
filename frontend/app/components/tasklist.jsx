@@ -5,6 +5,7 @@ import { MY_TASKS, TASK_ACTIVITY } from "../graphql/queries";
 import { TRANSITION_TASK } from "../graphql/mutation";
 import TaskActivity from "./taskActivity";
 import toast from "react-hot-toast";
+import TaskComments from "./taskComments";
 
 const STATUS_ACTIONS = {
   BACKLOG: ["TODO"],
@@ -155,8 +156,13 @@ function TaskList() {
           {task.status !== "ARCHIVED" && (
             <TaskActivity taskId={task.id} onRefetchedRequest={() => {}} />
           )}
+          { task.status !== "ARCHIVED" && (
+             <TaskComments taskId={task.id} />
+          ) }
         </div>
+        
       ))}
+     
     </div>
   );
 }
