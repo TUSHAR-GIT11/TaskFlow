@@ -11,6 +11,8 @@ import ActivityLog from "./models/ActivityLog.js";
 import { can, PERMISSIONS } from "../backend/utils/permissions.js";
 import Comment from "./models/Comment.js";
 import Notification from "./models/notification.js";
+import mongoose from "mongoose";
+
 dotenv.config();
 await connectDB();
 const typeDefs = `
@@ -71,6 +73,7 @@ const typeDefs = `
           status:TaskStatus!
           priority:TaskPriority!
           createdAt:String!
+          assignedToEmail: String
         }   
 type ActivityLog {
   id: ID!
@@ -100,7 +103,7 @@ type ActivityLog {
        type Mutation {
          signup(name:String!, email:String!, password:String!): AuthPayload!
          login(email:String!, password:String!): AuthPayload!
-         createTask(title:String!, description:String!,priority:TaskPriority!) : Task!
+         createTask(title:String!, description:String!,priority:TaskPriority!,assignedTo:ID!) : Task!
          transitionTask(taskId:ID!, nextStatus:TaskStatus!,reason:String):Task!
          updateUserRole(userId:ID!,role:UserRole!):User!
          toggleUserStatus(userId:ID!):User!
@@ -120,6 +123,10 @@ const createToken = (user) => {
 };
 
 const resolvers = {
+  Task: {
+    assignedToEmail: (task) => task.assignedTo?.email || null,
+  },
+
   Query: {
     users: async (_, __, { role, userId }) => {
       if (!can({ userId, role }, PERMISSIONS.MANAGE_USERS)) {
@@ -141,18 +148,18 @@ const resolvers = {
       };
     },
     myTasks: async (_, __, { userId, role }) => {
-      if (!userId) {
-        throw new Error("Unauthorized");
-      }
+      if (!userId) throw new Error("Unauthorized");
+
       if (role === "ADMIN") {
-        return Task.find();
+        return Task.find().populate("assignedTo", "email");
       }
-      const task = await Task.find({
-        ownerId: userId,
+
+      return Task.find({
+        assignedTo: userId,
         status: { $ne: "ARCHIVED" },
-      }).sort({ createdAt: -1 });
-      return task;
+      }).populate("assignedTo", "email");
     },
+
     taskActivity: async (_, { taskId }, { userId, role }) => {
       if (!userId) throw new Error("Unauthorized");
 
@@ -307,17 +314,42 @@ const resolvers = {
         },
       };
     },
-    createTask: async (_, args, { userId }) => {
-      if (!userId) {
-        throw new Error("Unauthorized");
+    createTask: async (
+      _,
+      { title, description, priority, assignedTo },
+      ctx,
+    ) => {
+      if (!ctx.userId) throw new Error("Unauthorized");
+
+      if (ctx.role !== "ADMIN") {
+        throw new Error("Only admin can create & assign tasks");
       }
+
+      const user = await User.findById(assignedTo);
+      if (!user) throw new Error("Assigned user not found");
+
       const task = await Task.create({
-        ...args,
+        title,
+        description,
+        priority,
         status: "BACKLOG",
-        ownerId: userId,
+        ownerId: ctx.userId,
+        assignedTo,
       });
+      const populatedTask = await task.populate("assignedTo", "email");
+
+      await ActivityLog.create({
+        entityType: "TASK",
+        entityId: task._id,
+        action: "TASK_ASSIGNED",
+        performedBy: ctx.userId,
+        fromValue: null,
+        toValue: user.email,
+      });
+      return populatedTask
       return task;
     },
+
     transitionTask: async (
       _,
       { taskId, nextStatus, reason },
@@ -469,8 +501,8 @@ const resolvers = {
       if (!userId) throw new Error("Unauthorized");
 
       const notification = await Notification.findOne({
-        _id: notificationId,
-        userId,
+        _id: new mongoose.Types.ObjectId(notificationId),
+        userId: new mongoose.Types.ObjectId(userId),
       });
 
       if (!notification) throw new Error("Notification not found");
