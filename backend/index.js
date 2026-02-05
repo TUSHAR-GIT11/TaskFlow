@@ -180,7 +180,7 @@ const resolvers = {
         action: log.action,
         fromValue: log.fromValue || null,
         toValue: log.toValue || null,
-        createdAt: log.createdAt.toISOString(), // ✅ THIS FIXES INVALID DATE
+        createdAt: log.createdAt.toISOString(),
       }));
     },
 
@@ -346,7 +346,7 @@ const resolvers = {
         fromValue: null,
         toValue: user.email,
       });
-      return populatedTask
+      return populatedTask;
       return task;
     },
 
@@ -470,7 +470,6 @@ const resolvers = {
         content,
       });
 
-      // activity log
       await ActivityLog.create({
         entityType: "TASK",
         entityId: taskId,
@@ -478,7 +477,6 @@ const resolvers = {
         performedBy: userId,
       });
 
-      // 🔔 notification to task owner (if not same user)
       if (task.ownerId.toString() !== userId) {
         await Notification.create({
           userId: task.ownerId,

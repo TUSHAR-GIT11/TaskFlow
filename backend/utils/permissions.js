@@ -12,7 +12,14 @@ export function can({ userId, role }, action, resource = null) {
   // USER permissions
   switch (action) {
     case PERMISSIONS.UPDATE_TASK:
-      return resource && resource.ownerId.toString() === userId;
+      if (!resource) return false;
+
+      const ownerMatch = resource.ownerId?.toString() === userId;
+
+      const assignedMatch =
+        resource.assignedTo && resource.assignedTo.toString() === userId;
+
+      return ownerMatch || assignedMatch;
 
     case PERMISSIONS.ARCHIVE_TASK:
       return false;
