@@ -32,12 +32,17 @@ export const CREATE_TASK = gql`
     $title: String!
     $description: String!
     $priority: TaskPriority!
+    $assignedTo: ID!
   ) {
-    createTask(title: $title, description: $description, priority: $priority) {
+    createTask(
+      title: $title
+      description: $description
+      priority: $priority
+      assignedTo: $assignedTo
+    ) {
       id
       title
-      status
-      priority
+      assignedToEmail
     }
   }
 `;
@@ -86,5 +91,11 @@ export const ADD_COMMENT = gql`
       authorEmail
       createdAt
     }
+  }
+`;
+
+export const MARK_NOTIFICATION_READ = gql`
+  mutation MarkNotificationRead($notificationId: ID!) {
+    markNotificationRead(notificationId: $notificationId)
   }
 `;

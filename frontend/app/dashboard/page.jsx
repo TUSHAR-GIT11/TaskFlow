@@ -1,3 +1,4 @@
+import AssignedTaskCard from "../components/assignedTaskCard";
 import CreateTaskForm from "../components/createTaskForm";
 import DashboardStats from "../components/dashboardStats";
 import TaskList from "../components/tasklist";
@@ -16,6 +17,7 @@ export default function DashboardPage() {
             Manage your tasks and workflow
           </p>
         </header>
+        <AssignedTaskCard/>
 
         {/* Create Task */}
         <DashboardStats/>

@@ -31,6 +31,7 @@ export const MY_TASKS = gql`
       title
       status
       priority
+      assignedToEmail
     }
   }
 `;
@@ -46,7 +47,6 @@ export const TASK_ACTIVITY = gql`
     }
   }
 `;
-
 
 export const TASK_STATS = gql`
   query TaskStats {
@@ -78,11 +78,23 @@ export const GET_ACTIVITY_LOG = gql`
 
 export const TASK_COMMENTS = gql`
   query TaskComments($taskId: ID!) {
-  taskComments(taskId: $taskId) {
-     id
-     content
-     authorEmail
-     createdAt  
+    taskComments(taskId: $taskId) {
+      id
+      content
+      authorEmail
+      createdAt
+    }
   }
-}
+`;
+
+export const MY_NOTIFICATIONS = gql`
+  query MyNotifications {
+    myNotifications {
+      id
+      message
+      type
+      isRead
+      createdAt
+    }
+  }
 `;
